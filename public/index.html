@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, max-height=device-height">
+    <title>EchoX Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            overflow-x: auto;
+            overflow-y: auto;
+            background: rgb(153, 251, 218);
+            margin: 0;
+        }
+
+        body::-webkit-scrollbar {
+            width: 18px;
+        }
+
+        body::-webkit-scrollbar-track {
+            background: aquamarine;
+            border-radius: 5px;
+        }
+
+        body::-webkit-scrollbar-thumb {
+            background: cyan;
+            border-radius: 5px;
+        }
+
+        .page-title {
+            user-select: none;
+            color: black;
+            -webkit-text-stroke: 2px gray;
+            -webkit-text-fill-color: lightgray;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0;
+            display: inline-flex;
+            flex-flow: column;
+            padding: 20px;
+            border: 4px solid #ccc;
+            border-radius: 30px;
+            position: relative;
+            background: whitesmoke;
+            transform: scale(1);
+        }
+
+        .chat-box {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 350px;
+            overflow-x: hidden;
+            overflow-y: scroll;
+            border-radius: 15px;
+        }
+
+        .input-box {
+            display: flex;
+            gap: 4px;
+            margin-top: 10px;
+            border-radius: 15px;
+        }
+
+        .input-box textarea {
+            flex: 1;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .input-box button {
+            padding: 10px;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 10px;
+            text-rendering: optimizeSpeed !important;
+            text-wrap-style: balance;
+            text-wrap-mode: wrap;
+        }
+
+        .message.user {
+            justify-content: flex-end !important;
+            line-height: 30px !important;
+        }
+
+        .message.bot {
+            justify-content: flex-start !important;
+            line-height: 30px !important;
+            gap: 4px !important;
+        }
+
+        .bubble {
+            border-radius: 10px;
+            padding: 10px;
+            max-width: 60%;
+            word-wrap: break-word;
+            word-spacing: 2px;
+        }
+
+        .bubble.user {
+            background-color: #dcf8c6;
+        }
+
+        .bubble.bot {
+            background-color: #cbedec;
+        }
+
+        .typing-indicator {
+            font-style: italic;
+            color: gray;
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 10px;
+        }
+
+        .typing-animation {
+            border-right: .1em solid black;
+            animation: typing 0.3s steps(40, end) infinite;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .code-box {
+            background-color: #e2ffff;
+            padding: 10px;
+            border-radius: 10px;
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            padding: 5px;
+            background-color: #ccc;
+            border: none;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            opacity: 0.5;
+        }
+
+        .copy-btn:hover {
+            background-color: lightslategray;
+            opacity: 0.95;
+        }
+
+        .code-block {
+            background-color: 8#e2ffff;
+            border-radius: 5px;
+            padding: 10px;
+            position: relative;
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+
+        pre {
+            overflow-x: auto;
+            margin: 0;
+        }
+
+        @keyframes typing {
+            from {
+                border-right-color: black;
+            }
+
+            to {
+                border-right-color: transparent;
+            }
+        }
+
+        .bouncing-dots {
+            display: flex;
+            align-items: center;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background-color: gray;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: bounce 0.6s infinite;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .feedback {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+            user-select: none;
+        }
+
+        .feedback button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .send-button {
+            cursor: pointer;
+            border-radius: 10px;
+            background: linear-gradient(lightgray, whitesmoke);
+            transition: all 0.2s ease;
+            text-align: top;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+        }
+
+        .send-button:hover {
+            background: linear-gradient(whitesmoke, lightgray);
+        }
+
+        .send-button:active {
+            transform: scale(0.9);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Styles for history buttons */
+        .history-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+
+        .history-buttons button {
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+            background-color: #ccc;
+            transition: background-color 0.2s ease;
+        }
+
+        .history-buttons button:hover {
+            background-color: lightslategray;
+        }
+
+        #user-input {
+            max-width: auto !important;
+            min-width: 300px;
+            min-height: 35px;
+            max-height: 100px;
+            transition: all 0.1s ease-out;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- AI Processing is located outside of the folder, so it will not be in this current folder,
+    nor public folder, parent which is self_generating_ai_model, but is in the parent of the main folder documents -->
+    <div class="container">
+        <h1 class="page-title">AI Chat | By: Maximus Farvour</h1>
+        <div class="chat-box" id="chat-box"><!-- Messages will appear here do not put anything here manually! --></div>
+        <div class="typing-indicator" id="typing-indicator">
+            <div class="bouncing-dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+        <div class="input-box">
+            <textarea id="user-input" placeholder="Type a message..."></textarea>
+            <button onclick="sendMessage()" class="send-button">&UpArrow;<span
+                    style="font-size: 2em;">📨</span></button>
+        </div>
+        <div class="history-buttons">
+            <button onclick="loadHistory()">Load History</button>
+            <button onclick="clearHistory()">Clear History</button>
+        </div>
+        <div class="iframe-site-container">
+            <button id="PositionRightOfChat" style="cursor: pointer;">⇱</button>
+            <iframe id="iframe" src="file_list.html"></iframe>
+        </div>
+    </div>
+    <style>
+        .iframe-site-container {
+            position: absolute;
+            padding: 10px;
+            background: whitesmoke;
+            border: 4px solid #ccc;
+            border-radius: 30px;
+            margin: 15px;
+            right: -700px;
+            margin-top: -24.5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            justify-self: center;
+            align-items: center;
+            height: 620px;
+            width: 620px;
+        }
+
+        #iframe {
+            height: 585px;
+            width: 605px;
+            border: 3px solid #ccc;
+            border-radius: 10px;
+            outline: 1px dashed #ccc;
+            outline-offset: 1px;
+        }
+
+        #PositionRightOfChat {
+            position: absolute;
+            top: 20px;
+            left: 10px;
+            border: 2px solid #ccc;
+            border-radius: 1cm;
+            font-weight: bold;
+            transition: all 0.25s ease;
+        }
+
+        @keyframes hoverExpandAnimation {
+            0% {
+                transform: scale(1);
+            }
+
+            25% {
+                transform: scale(1.2);
+            }
+
+            50% {
+                transform: scale(1);
+            }
+
+            75% {
+                transform: scale(1.35);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        #PositionRightOfChat:hover {
+            background: rgb(205, 205, 205);
+            animation: hoverExpandAnimation 0.25s ease;
+        }
+
+        #PositionRightOfChat:active {
+            background: rgb(173, 173, 173);
+        }
+    </style>
+    <script>
+        // Get the text box element
+        const textBox = document.getElementById("user-input");
+
+        // Add an event listener to the text box
+        textBox.addEventListener("input", function () {
+            // Get the current text
+            let text = textBox.value;
+
+            // Check if the input contains "->"
+            if (text.includes("->")) {
+                // Replace "->" with "→"
+                text = text.replace("->", "→");
+
+                // Update textbox with new value
+                textBox.value = text;
+                const sizedText = text;
+                //textBox.innerHTML(`<span class="right-arrow-size">${sizedText}</span>`);
+                //} else {
+                //    return textBox.value = text;
+            }
+            // Check if the input contains <-
+            if (text.includes("<-")) {
+                text = text.replace("<-", "←");
+
+                // Update textbox with new value
+                textBox.value = text;
+                //textBox.innerHTML(`<span class="left-arrow-size">${sizedText}</span>`);
+                //} else {
+                //    return textBox.value = text;
+            }
+            //return;
+        });
+
+        // ===================================================================================================== //
+
+        // Create history of User in current box
+        let chatHistory = [];
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+
+        function processHighlightedText(text) {
+            // Replace **text** with span elements for highlighting
+            return text.replace(/\*\*(.*?)\*\*/g, '<span class="highlight">$1</span>');
+        }
+
+        function parseResponse(responseText) {
+            const container = document.createElement('div');
+            const codeBlockRegex = /```([a-zA-Z0-9]*)\n([\s\S]*?)```/g;
+            let lastIndex = 0;
+            let match;
+
+            while ((match = codeBlockRegex.exec(responseText)) !== null) {
+                // Text before code block
+                if (match.index > lastIndex) {
+                    const text = responseText.substring(lastIndex, match.index);
+                    if (text.trim()) {
+                        const textElement = document.createElement('div');
+                        textElement.className = 'text';
+                        textElement.innerHTML = processHighlightedText(escapeHtml(text.trim()).replace(/\n/g, '<br>'));
+                        container.appendChild(textElement);
+                    }
+                }
+
+                // Code block
+                const codeLanguage = match[1] || '';
+                const codeContent = match[2];
+
+                const codeBlock = document.createElement('div');
+                codeBlock.className = 'code-block';
+
+                const copyButton = document.createElement('button');
+                copyButton.className = 'copy-btn';
+                copyButton.textContent = 'Copy';
+                copyButton.onclick = () => copyCode(codeContent);
+
+                const pre = document.createElement('pre');
+                const codeElement = document.createElement('code');
+                codeElement.className = escapeHtml(codeLanguage);
+                codeElement.textContent = codeContent;
+
+                pre.appendChild(codeElement);
+                codeBlock.appendChild(copyButton);
+                codeBlock.appendChild(pre);
+
+                container.appendChild(codeBlock);
+
+                lastIndex = codeBlockRegex.lastIndex;
+            }
+
+            // Remaining text after last code block
+            if (lastIndex < responseText.length) {
+                const text = responseText.substring(lastIndex);
+                if (text.trim()) {
+                    const textElement = document.createElement('div');
+                    textElement.className = 'text';
+                    textElement.innerHTML = processHighlightedText(escapeHtml(text.trim()).replace(/\n/g, '<br>'));
+                    container.appendChild(textElement);
+                }
+            }
+
+            return container;
+        }
+
+        function displayMessage(role, content) {
+            const chatBox = document.getElementById("chat-box");
+
+            const messageElement = document.createElement("div");
+            messageElement.className = `message ${role}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `bubble ${role}`;
+
+            // Add label (User or AI) in bold
+            const label = document.createElement('span');
+            label.style.fontWeight = 'bold';
+            label.textContent = role === 'bot' ? 'AI: ' : 'User: ';
+
+            bubble.appendChild(label);
+
+            if (role === 'bot') {
+                const parsedContent = parseResponse(content);
+                bubble.appendChild(parsedContent);
+                messageElement.appendChild(bubble);
+                showFeedback(messageElement);
+            } else {
+                const userContent = document.createElement('span');
+                userContent.innerHTML = escapeHtml(content).replace(/\n/g, '<br>');
+                bubble.appendChild(userContent);
+                messageElement.appendChild(bubble);
+            }
+
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const userInputElement = document.getElementById("user-input");
+            const userInput = userInputElement.value.trim();
+            if (!userInput) return;
+            userInputElement.value = "";
+
+            // Display user message
+            displayMessage('user', userInput);
+
+            chatHistory.push({ role: 'user', content: userInput });
+            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+
+            const typingIndicator = document.getElementById("typing-indicator");
+            typingIndicator.style.display = "flex";
+
+            try {
+                const response = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: userInput, history: chatHistory })
+                });
+
+                const responseData = await response.json();
+                typingIndicator.style.display = "none";
+
+                // Display bot message
+                displayMessage('bot', responseData.response);
+
+                chatHistory.push({ role: 'bot', content: responseData.response });
+                localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+
+            } catch (error) {
+                typingIndicator.style.display = "none";
+                console.error('Error:', error);
+            }
+        }
+
+        function copyCode(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                alert("Code copied to clipboard!");
+            }).catch(err => {
+                console.error('Failed to copy code:', err);
+            });
+        }
+
+        function showFeedback(messageElement) {
+            const feedback = document.createElement("div");
+            feedback.className = "feedback";
+            feedback.innerHTML = `
+            <button onclick="sendFeedback('up')">👍</button>
+            <button onclick="sendFeedback('down')">👎</button>
+        `;
+            messageElement.appendChild(feedback);
+        }
+
+        function sendFeedback(type) {
+            console.log(`Feedback sent: ${type}`);
+            alert(`Thank you for your feedback: ${type}`);
+        }
+
+        function loadHistory() {
+            chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            const chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML = ''; // Clear chat box
+
+            chatHistory.forEach(entry => {
+                displayMessage(entry.role, entry.content);
+            });
+        }
+
+        function clearHistory() {
+            localStorage.removeItem('chatHistory');
+            chatHistory = [];
+            const chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML = '';
+        }
+
+        // Load chat history on page load
+        window.onload = () => {
+            loadHistory();
+        };
+    </script>
+</body>
+
+</html>
