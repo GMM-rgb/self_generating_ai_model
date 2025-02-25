@@ -1,5 +1,7 @@
 import numpy as np
 from sklearn.metrics import accuracy_score, classification_report
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import LabelEncoder
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 import json
@@ -36,17 +38,25 @@ def train_model():
     if X_train is None:
         return
     
+    # Convert text data to numerical format
+    vectorizer = TfidfVectorizer()
+    X_train_tfidf = vectorizer.fit_transform(X_train).toarray()
+    
+    # Encode output labels
+    label_encoder = LabelEncoder()
+    y_train_encoded = label_encoder.fit_transform(y_train)
+    
     model = Sequential([
-        Dense(64, activation='relu', input_shape=(len(X_train[0]),)),
+        Dense(64, activation='relu', input_shape=(X_train_tfidf.shape[1],)),
         Dropout(0.2),
         Dense(32, activation='relu'),
         Dropout(0.2),
-        Dense(len(y_train[0]), activation='softmax')
+        Dense(len(set(y_train)), activation='softmax')
     ])
     
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     print("Training model...")
-    model.fit(np.array(X_train), np.array(y_train), epochs=10, batch_size=32, validation_split=0.2)
+    model.fit(np.array(X_train_tfidf), np.array(y_train_encoded), epochs=10, batch_size=32, validation_split=0.2)
     model.save("chat_model.h5")
     print("Model trained and saved successfully.")
 
