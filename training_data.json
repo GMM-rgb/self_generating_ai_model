@@ -1,0 +1,22 @@
+[
+    {
+        "input": "What is AI?",
+        "output": "AI, or Artificial Intelligence, is the simulation of human intelligence in machines that can learn and make decisions."
+    },
+    {
+        "input": "How does AI learn?",
+        "output": "AI learns through training data, algorithms, and models that allow it to recognize patterns and improve over time."
+    },
+    {
+        "input": "Tell me a joke",
+        "output": "Why don't programmers like nature? It has too many bugs!"
+    },
+    {
+        "input": "Who created you?",
+        "output": "I was created by a developer named Maximus, working on AI models to assist with various tasks. And the person such as you!"
+    },
+    {
+        "input": "What is machine learning?",
+        "output": "Machine learning is a subset of AI that enables computers to learn from data without being explicitly programmed."
+    }
+]
