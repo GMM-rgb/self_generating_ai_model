@@ -6,6 +6,8 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout
 import json
 from difflib import get_close_matches
+import requests
+from bs4 import BeautifulSoup
 
 # Load training data function
 def load_data():
@@ -23,6 +25,23 @@ def load_data():
         print("Error reading training_data.json. Ensure it is properly formatted.")
         return None, None
 
+# Fetch online information
+def fetch_online_info(query):
+    try:
+        search_url = f"https://www.google.com/search?q={query}"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(search_url, headers=headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+        snippets = soup.find_all("span")
+        
+        for snippet in snippets:
+            text = snippet.get_text()
+            if len(text) > 50:
+                return text
+        return "I couldn't find enough information online."
+    except Exception as e:
+        return f"Error fetching online info: {str(e)}"
+
 # Find best match for user input
 def find_best_match(user_input, X_train, y_train):
     matches = get_close_matches(user_input, X_train, n=1, cutoff=0.5)
@@ -30,7 +49,7 @@ def find_best_match(user_input, X_train, y_train):
         match_index = X_train.index(matches[0])
         return y_train[match_index]
     else:
-        return "I'm not sure how to respond to that yet. Can you teach me?"
+        return fetch_online_info(user_input)
 
 # Train the model function
 def train_model():
