@@ -10,7 +10,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 
-# Load training data function: returns the full list of training entries.
+# Load training data function
 def load_data():
     try:
         with open("training_data.json", "r") as f:
@@ -40,10 +40,25 @@ def fetch_online_info(query):
     except Exception as e:
         return f"Sorry, I ran into an error fetching information: {str(e)}"
 
-# Find best match for user input using the trained model and display thinking process
+# Get additional definitions from training entries that might be relevant
+def get_additional_definitions(user_input, training_data, best_match_input):
+    definitions = []
+    for entry in training_data:
+        if entry.get("input") == best_match_input:
+            continue
+        if "definition" in entry:
+            for word in entry["input"].split():
+                if word.lower() in user_input.lower():
+                    definitions.append(entry["definition"])
+                    break
+    return definitions
+
+# Find best match for user input using the trained model
 def find_best_match(user_input, training_data):
     # Load model, vectorizer, label encoder
-    model = load_model('chat_model.h5')
+    model = load_model('chat_model.h5', compile=False)
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
     with open('vectorizer.pkl', 'rb') as f:
         vectorizer = pickle.load(f)
     with open('label_encoder.pkl', 'rb') as f:
@@ -54,18 +69,15 @@ def find_best_match(user_input, training_data):
     tokens = user_input.split()
     print(f"Tokens identified: {tokens}")
 
-    # Convert input to TF-IDF features
     print("AI internal reasoning: Transforming input into numerical features using TF-IDF...")
     user_input_tfidf = vectorizer.transform([user_input]).toarray()
 
-    # Make prediction
     print("AI internal reasoning: Predicting the most suitable response...")
     probs = model.predict(user_input_tfidf)
     predicted_class_index = np.argmax(probs, axis=1)
-    predicted_class = label_encoder.inverse_transform(predicted_class_index)
-    response = predicted_class[0]
+    predicted_response = label_encoder.inverse_transform(predicted_class_index)[0]
+    confidence = probs[0][predicted_class_index[0]]
 
-    # Display probabilities for top responses
     print("AI internal reasoning: Evaluating possible responses and their confidence levels...")
     top_indices = probs[0].argsort()[-3:][::-1]
     for idx in top_indices:
@@ -73,52 +85,42 @@ def find_best_match(user_input, training_data):
         probability = probs[0][idx]
         print(f" - '{class_label}': {probability:.2%} confidence")
 
-    # If the highest probability is below a threshold, consider fetching online info
-    if probs[0][predicted_class_index[0]] < 0.60:
+    # **Adjust Confidence Threshold Based on Input Length**
+    if len(tokens) <= 2:
+        confidence_threshold = 0.15  # Lower threshold for short inputs
+    else:
+        confidence_threshold = 0.60  # Original threshold for longer inputs
+
+    if confidence < confidence_threshold:
         print("AI internal reasoning: Confidence is low. Seeking additional information...")
         response = fetch_online_info(user_input)
     else:
-        # Append any additional definitions from training data if relevant
-        best_match_input = training_data[predicted_class_index[0]]["input"]
-        additional_defs = get_additional_definitions(user_input, training_data, best_match_input)
+        response = predicted_response
+        # Append any additional definitions if relevant
+        additional_defs = get_additional_definitions(user_input, training_data, predicted_response)
         if additional_defs:
             response += " " + " ".join(additional_defs)
+
     return response
 
-# Get additional definitions from training entries that might be relevant.
-def get_additional_definitions(user_input, training_data, best_match_input):
-    definitions = []
-    # Check other entries (exclude the best match) for keywords in common.
-    for entry in training_data:
-        if entry.get("input") == best_match_input:
-            continue
-        if "definition" in entry:
-            # Check if any word from the entry's input appears in the user query.
-            for word in entry["input"].split():
-                if word.lower() in user_input.lower():
-                    definitions.append(entry["definition"])
-                    break
-    return definitions
-
-# Train the model function using the training data from JSON.
+# Modified train_model function with trial phase and correction mechanism
 def train_model():
     training_data = load_data()
     if training_data is None:
         return
 
-    # Prepare data for training the model
+    # Prepare data
     X_train = [entry["input"] for entry in training_data]
     y_train = [entry["output"] for entry in training_data]
 
-    # Convert text data to numerical format
+    # Vectorization
     vectorizer = TfidfVectorizer()
     X_train_tfidf = vectorizer.fit_transform(X_train).toarray()
 
-    # Encode output labels
+    # Label Encoding
     label_encoder = LabelEncoder()
     y_train_encoded = label_encoder.fit_transform(y_train)
 
-    # Save the vectorizer and label encoder for later use
     with open('vectorizer.pkl', 'wb') as f:
         pickle.dump(vectorizer, f)
     with open('label_encoder.pkl', 'wb') as f:
@@ -139,13 +141,50 @@ def train_model():
     model.save("chat_model.h5")
     print("Model trained and saved successfully.")
 
-# Chat function; can run in interactive mode or process a single command-line message.
+    # Trial Phase: Testing the model's responses
+    print("\nStarting trial phase to evaluate the model's responses...")
+    score = 0
+    corrections_needed = False
+    for i, input_text in enumerate(X_train):
+        print(f"\nTest {i+1}:")
+        print(f"Input: {input_text}")
+
+        # Transform input
+        input_tfidf = vectorizer.transform([input_text]).toarray()
+
+        # Predict
+        probs = model.predict(input_tfidf)
+        predicted_class_index = np.argmax(probs, axis=1)
+        predicted_response = label_encoder.inverse_transform(predicted_class_index)[0]
+
+        print(f"Expected Output: {y_train[i]}")
+        print(f"Model's Output: {predicted_response}")
+
+        if predicted_response == y_train[i]:
+            print("Result: Correct (+1 point)")
+            score += 1
+        else:
+            print("Result: Incorrect (-1 point)")
+            score -= 1
+            corrections_needed = True
+            # Correct the response in the training data
+            training_data[i]["output"] = y_train[i]
+
+    print(f"\nTrial phase completed. Total Score: {score}/{len(X_train)}")
+    if corrections_needed:
+        print("Corrections were made. Saving corrected training data...")
+        with open("training_data_corrected.json", "w") as f:
+            json.dump(training_data, f, indent=4)
+        print("Corrected responses saved. Please retrain the model with the corrected data by selecting the 'Train AI' option from the main menu.")
+    else:
+        print("The model performed well in the trial phase. No corrections needed.")
+
+# Chat function; can run in interactive mode or process a single command-line message
 def chat(interactive=True, initial_message=None):
     training_data = load_data()
     if training_data is None:
         return
 
-    # If a message is provided from the command-line, process it once.
     if not interactive and initial_message is not None:
         print("You:", initial_message)
         print("AI is thinking...")
@@ -153,7 +192,6 @@ def chat(interactive=True, initial_message=None):
         print("AI:", response)
         return
 
-    # Otherwise, run in interactive mode.
     try:
         while True:
             user_input = input("\nYou: ")
@@ -165,7 +203,7 @@ def chat(interactive=True, initial_message=None):
     except KeyboardInterrupt:
         print("\nExiting chat mode.")
 
-# Main menu for interactive mode.
+# Main menu for interactive mode
 def main():
     while True:
         print("\n===== AI Chatbot Menu =====")
@@ -174,6 +212,15 @@ def main():
         print("3. Exit")
         choice = input("Choose an option: ")
         if choice == "1":
+            # Check if corrected training data exists
+            try:
+                with open("training_data_corrected.json", "r") as f:
+                    corrected_data = json.load(f)
+                with open("training_data.json", "w") as f:
+                    json.dump(corrected_data, f, indent=4)
+                print("Loaded corrected training data.")
+            except FileNotFoundError:
+                pass  # No corrected data, proceed with existing training_data.json
             train_model()
         elif choice == "2":
             chat()
@@ -184,7 +231,6 @@ def main():
             print("Invalid option. Please try again.")
 
 if __name__ == "__main__":
-    # If command-line arguments are provided, treat them as a single message to process.
     if len(sys.argv) > 1:
         initial_message = " ".join(sys.argv[1:])
         chat(interactive=False, initial_message=initial_message)
