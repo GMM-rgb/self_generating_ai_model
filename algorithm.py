@@ -1,3 +1,5 @@
+import sys
+import time
 import numpy as np
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -8,14 +10,12 @@ import json
 from difflib import get_close_matches
 import requests
 from bs4 import BeautifulSoup
-import time
 
 # Load training data function
 def load_data():
     try:
         with open("training_data.json", "r") as f:
             data = json.load(f)
-        
         X_train = [entry["input"] for entry in data]
         y_train = [entry["output"] for entry in data]
         return X_train, y_train
@@ -34,7 +34,6 @@ def fetch_online_info(query):
         response = requests.get(search_url, headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
         snippets = soup.find_all("span")
-        
         for snippet in snippets:
             text = snippet.get_text()
             if len(text) > 50:
@@ -82,27 +81,37 @@ def train_model():
     model.save("chat_model.h5")
     print("Model trained and saved successfully.")
 
-# Chat function
-def chat():
+# Chat function; can run in interactive mode or process a single command-line message
+def chat(interactive=True, initial_message=None):
     X_train, y_train = load_data()
     if X_train is None:
         return
+    
+    # If a message is provided from the command-line, process it once
+    if not interactive and initial_message is not None:
+        print("You:", initial_message)
+        print("AI is thinking...")
+        time.sleep(1)
+        print("AI internal reasoning: Processing your input...")
+        response = find_best_match(initial_message, X_train, y_train)
+        print("AI:", response)
+        return
+
+    # Otherwise, run in interactive mode
     try:
         while True:
             user_input = input("You: ")
-            if user_input.endswith("\""):
-                user_input = user_input.strip("\"")
-                print("AI is thinking...")
-                time.sleep(1)  # Simulate a delay for thinking
-                print("AI internal reasoning: Processing your input...")
-                response = find_best_match(user_input, X_train, y_train)
-                print("AI:", response)
-            elif user_input.lower() == "exit":
+            if user_input.lower() == "exit":
                 break
+            print("AI is thinking...")
+            time.sleep(1)  # Simulate delay for thinking
+            print("AI internal reasoning: Processing your input...")
+            response = find_best_match(user_input, X_train, y_train)
+            print("AI:", response)
     except KeyboardInterrupt:
         print("\nExiting chat mode.")
 
-# Main menu
+# Main menu for interactive mode
 def main():
     while True:
         print("1. Train AI")
@@ -116,4 +125,9 @@ def main():
             print("Invalid option. Try again.")
 
 if __name__ == "__main__":
-    main()
+    # If command-line arguments are provided, treat them as a single message to process
+    if len(sys.argv) > 1:
+         initial_message = " ".join(sys.argv[1:])
+         chat(interactive=False, initial_message=initial_message)
+    else:
+         main()
