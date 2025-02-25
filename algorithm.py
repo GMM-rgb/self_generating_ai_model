@@ -8,6 +8,7 @@ import json
 from difflib import get_close_matches
 import requests
 from bs4 import BeautifulSoup
+import time
 
 # Load training data function
 def load_data():
@@ -47,8 +48,10 @@ def find_best_match(user_input, X_train, y_train):
     matches = get_close_matches(user_input, X_train, n=1, cutoff=0.5)
     if matches:
         match_index = X_train.index(matches[0])
+        print("AI internal reasoning: Found a similar query in training data.")
         return y_train[match_index]
     else:
+        print("AI internal reasoning: No close match found. Fetching online information...")
         return fetch_online_info(user_input)
 
 # Train the model function
@@ -89,6 +92,9 @@ def chat():
             user_input = input("You: ")
             if user_input.endswith("\""):
                 user_input = user_input.strip("\"")
+                print("AI is thinking...")
+                time.sleep(1)  # Simulate a delay for thinking
+                print("AI internal reasoning: Processing your input...")
                 response = find_best_match(user_input, X_train, y_train)
                 print("AI:", response)
             elif user_input.lower() == "exit":
