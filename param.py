@@ -2,26 +2,55 @@ import sys
 import time
 import numpy as np
 import pickle
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.preprocessing import LabelEncoder
-from keras.models import Sequential, load_model
-from keras.layers import Dense, Dropout
 import json
 import requests
 from bs4 import BeautifulSoup
 
+# Import for Generative Model
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import LabelEncoder
+from keras.models import Sequential, load_model
+from keras.layers import Dense, Dropout
+
+import warnings
+warnings.filterwarnings("ignore")
+
 # Load training data function
 def load_data():
+    data = []
+    # Load original training data
     try:
         with open("training_data.json", "r") as f:
             training_data = json.load(f)
-        return training_data
+            data.extend(training_data)
     except FileNotFoundError:
-        print("No training data found. Please add a valid training_data.json file.")
-        return None
+        print("No original training data found. Please add a valid training_data.json file.")
     except json.JSONDecodeError:
         print("Error reading training_data.json. Ensure it is properly formatted.")
+    
+    # Load corrected training data
+    try:
+        with open("training_data_corrected.json", "r") as f:
+            corrected_data = json.load(f)
+            data.extend(corrected_data)
+    except FileNotFoundError:
+        print("No corrected training data found. If this is the first run, this is expected.")
+    except json.JSONDecodeError:
+        print("Error reading training_data_corrected.json. Ensure it is properly formatted.")
+
+    if not data:
+        print("No training data available.")
         return None
+    else:
+        return data
+
+# Save updated training data
+def save_training_data(training_data):
+    with open("training_data.json", "w") as f:
+        json.dump(training_data, f, indent=4)
+    print("Training data updated with corrections.")
 
 # Fetch online information (if no confident match is found)
 def fetch_online_info(query):
@@ -40,6 +69,26 @@ def fetch_online_info(query):
     except Exception as e:
         return f"Sorry, I ran into an error fetching information: {str(e)}"
 
+# Initialize the generative model
+def initialize_generative_model():
+    try:
+        tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+        model = GPT2LMHeadModel.from_pretrained('gpt2')
+        return tokenizer, model
+    except Exception as e:
+        print(f"Error initializing the generative model: {str(e)}")
+        return None, None
+
+# Generate a response using the generative model
+def generate_response_gpt2(user_input, tokenizer, model):
+    print("AI internal reasoning: Generating response using GPT-2...")
+    inputs = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt')
+    outputs = model.generate(inputs, max_length=100, do_sample=True, top_p=0.95, top_k=60)
+    text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    # Return the generated text after the user input
+    response = text[len(user_input):].strip()
+    return response
+
 # Get additional definitions from training entries that might be relevant
 def get_additional_definitions(user_input, training_data, best_match_input):
     definitions = []
@@ -54,10 +103,11 @@ def get_additional_definitions(user_input, training_data, best_match_input):
     return definitions
 
 # Find best match for user input using the trained model
-def find_best_match(user_input, training_data):
+# Uses GPT-2 Model for telling it what to do.
+def find_best_match(user_input, training_data, tokenizer, gpt2_model):
     # Load model, vectorizer, label encoder
     model = load_model('chat_model.h5', compile=False)
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
 
     with open('vectorizer.pkl', 'rb') as f:
         vectorizer = pickle.load(f)
@@ -85,15 +135,15 @@ def find_best_match(user_input, training_data):
         probability = probs[0][idx]
         print(f" - '{class_label}': {probability:.2%} confidence")
 
-    # **Adjust Confidence Threshold Based on Input Length**
+    # Adjust confidence threshold based on input length
     if len(tokens) <= 2:
-        confidence_threshold = 0.15  # Lower threshold for short inputs
+        confidence_threshold = 0.10  # Lower threshold for short inputs
     else:
         confidence_threshold = 0.60  # Original threshold for longer inputs
 
     if confidence < confidence_threshold:
-        print("AI internal reasoning: Confidence is low. Seeking additional information...")
-        response = fetch_online_info(user_input)
+        print("AI internal reasoning: Confidence is low. Generating a response...")
+        response = generate_response_gpt2(user_input, tokenizer, gpt2_model)
     else:
         response = predicted_response
         # Append any additional definitions if relevant
@@ -103,7 +153,7 @@ def find_best_match(user_input, training_data):
 
     return response
 
-# Modified train_model function with trial phase and correction mechanism
+# Train the model function with trial phase and correction mechanism
 def train_model():
     training_data = load_data()
     if training_data is None:
@@ -114,7 +164,7 @@ def train_model():
     y_train = [entry["output"] for entry in training_data]
 
     # Vectorization
-    vectorizer = TfidfVectorizer()
+    vectorizer = TfidfVectorizer(analyzer='char_wb', ngram_range=(1, 3))
     X_train_tfidf = vectorizer.fit_transform(X_train).toarray()
 
     # Label Encoding
@@ -128,16 +178,16 @@ def train_model():
 
     # Build the model
     model = Sequential([
-        Dense(64, activation='relu', input_shape=(X_train_tfidf.shape[1],)),
-        Dropout(0.2),
-        Dense(32, activation='relu'),
-        Dropout(0.2),
-        Dense(len(set(y_train)), activation='softmax')
+        Dense(128, activation='relu', input_shape=(X_train_tfidf.shape[1],)),
+        Dropout(0.3),
+        Dense(64, activation='relu'),
+        Dropout(0.3),
+        Dense(len(label_encoder.classes_), activation='softmax')
     ])
 
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     print("Training the AI model...")
-    model.fit(np.array(X_train_tfidf), np.array(y_train_encoded), epochs=50, batch_size=8, validation_split=0.2)
+    model.fit(np.array(X_train_tfidf), np.array(y_train_encoded), epochs=100, batch_size=8, validation_split=0.2)
     model.save("chat_model.h5")
     print("Model trained and saved successfully.")
 
@@ -168,14 +218,13 @@ def train_model():
             score -= 1
             corrections_needed = True
             # Correct the response in the training data
-            training_data[i]["output"] = y_train[i]
+            training_data[i]["output"] = predicted_response  # Applying the predicted response
 
     print(f"\nTrial phase completed. Total Score: {score}/{len(X_train)}")
     if corrections_needed:
-        print("Corrections were made. Saving corrected training data...")
-        with open("training_data_corrected.json", "w") as f:
-            json.dump(training_data, f, indent=4)
-        print("Corrected responses saved. Please retrain the model with the corrected data by selecting the 'Train AI' option from the main menu.")
+        print("Corrections were made. Updating training data...")
+        save_training_data(training_data)
+        print("Please retrain the model to apply corrections.")
     else:
         print("The model performed well in the trial phase. No corrections needed.")
 
@@ -185,10 +234,15 @@ def chat(interactive=True, initial_message=None):
     if training_data is None:
         return
 
+    # Initialize the generative model
+    tokenizer, gpt2_model = initialize_generative_model()
+    if tokenizer is None or gpt2_model is None:
+        print("Generative model not available. Chatbot will function without generative capabilities.")
+
     if not interactive and initial_message is not None:
         print("You:", initial_message)
         print("AI is thinking...")
-        response = find_best_match(initial_message, training_data)
+        response = find_best_match(initial_message, training_data, tokenizer, gpt2_model)
         print("AI:", response)
         return
 
@@ -198,7 +252,7 @@ def chat(interactive=True, initial_message=None):
             if user_input.lower() == "exit":
                 break
             print("\nAI is thinking...")
-            response = find_best_match(user_input, training_data)
+            response = find_best_match(user_input, training_data, tokenizer, gpt2_model)
             print("\nAI:", response)
     except KeyboardInterrupt:
         print("\nExiting chat mode.")
@@ -212,15 +266,6 @@ def main():
         print("3. Exit")
         choice = input("Choose an option: ")
         if choice == "1":
-            # Check if corrected training data exists
-            try:
-                with open("training_data_corrected.json", "r") as f:
-                    corrected_data = json.load(f)
-                with open("training_data.json", "w") as f:
-                    json.dump(corrected_data, f, indent=4)
-                print("Loaded corrected training data.")
-            except FileNotFoundError:
-                pass  # No corrected data, proceed with existing training_data.json
             train_model()
         elif choice == "2":
             chat()

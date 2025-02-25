@@ -51,5 +51,15 @@
         "input": "Good evening",
         "output": "Good evening! How was your day?",
         "definition": "A greeting used in the evening."
+    },
+    {
+        "input": "Greetings",
+        "output": "Greetings! Hope you're having a great day!",
+        "definition": "A formal way to say hello."
+    },
+    {
+        "input": "Yo",
+        "output": "Yo! What's happening?",
+        "definition": "A very informal greeting."
     }
 ]
