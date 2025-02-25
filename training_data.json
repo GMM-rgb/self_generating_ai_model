@@ -1,15 +1,18 @@
 [
     {
         "input": "What is AI?",
-        "output": "AI, or Artificial Intelligence, is the simulation of human intelligence in machines that can learn and make decisions."
+        "output": "AI, or Artificial Intelligence, is the simulation of human intelligence in machines.",
+        "definition": "Artificial Intelligence refers to techniques that enable machines to mimic human behavior."
     },
     {
         "input": "How does AI learn?",
-        "output": "AI learns through training data, algorithms, and models that allow it to recognize patterns and improve over time."
+        "output": "AI learns from data using various algorithms and models.",
+        "definition": "Machine learning is a key method by which AI systems improve over time."
     },
     {
         "input": "Tell me a joke",
-        "output": "Why don't programmers like nature? It has too many bugs!"
+        "output": "Why don't programmers like nature? It has too many bugs!",
+        "definition": "A joke is a short story or phrase intended to amuse."
     },
     {
         "input": "Who created you?",
@@ -18,5 +21,35 @@
     {
         "input": "What is machine learning?",
         "output": "Machine learning is a subset of AI that enables computers to learn from data without being explicitly programmed."
+    },
+    {
+        "input": "Hello",
+        "output": "Hey there! How's it going?",
+        "definition": "A greeting used when meeting someone."
+    },
+    {
+        "input": "Hi",
+        "output": "Hi! Nice to see you!",
+        "definition": "A short form of 'hello,' used to greet someone."
+    },
+    {
+        "input": "Hey",
+        "output": "Hey! What's up?",
+        "definition": "An informal way of saying hello."
+    },
+    {
+        "input": "Good morning",
+        "output": "Good morning! How did you sleep?",
+        "definition": "A greeting used in the morning."
+    },
+    {
+        "input": "Good afternoon",
+        "output": "Good afternoon! How's your day been?",
+        "definition": "A greeting used in the afternoon."
+    },
+    {
+        "input": "Good evening",
+        "output": "Good evening! How was your day?",
+        "definition": "A greeting used in the evening."
     }
 ]
