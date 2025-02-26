@@ -25,7 +25,7 @@ app.post('/chat', async (req, res) => {
             model: 'llama2',
             prompt,
             options: {
-                temperature: 0.4,
+                temperature: 0.2,
                 top_p: 1.0
             }
         }, { responseType: 'stream' });
