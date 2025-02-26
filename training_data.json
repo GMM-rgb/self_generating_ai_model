@@ -61,5 +61,10 @@
         "input": "Yo",
         "output": "Yo! What's happening?",
         "definition": "A very informal greeting."
+    },
+    {
+        "input": "How are you?",
+        "output": "Not much, just hanging around. How about you?",
+        "definition": "Asking for a time being communication for a mental feeling or physical."
     }
 ]

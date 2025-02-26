@@ -103,7 +103,7 @@ def get_additional_definitions(user_input, training_data, best_match_input):
     return definitions
 
 # Find best match for user input using the trained model
-# Uses GPT-2 Model for telling it what to do.
+# Uses GPT-2 Model for telling it what to do, for better accuracy and future data for the model itself, which is not the gpt2 model, it's the model gpt2 is training.
 def find_best_match(user_input, training_data, tokenizer, gpt2_model):
     # Load model, vectorizer, label encoder
     model = load_model('chat_model.h5', compile=False)
