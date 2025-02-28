@@ -210,8 +210,11 @@
 
         .feedback {
             display: flex;
+            flex-direction: column;
             gap: 5px;
-            margin-top: 5px;
+            position: relative;
+            margin-bottom: 5px;
+            right: 0;
             user-select: none;
         }
 
@@ -220,6 +223,14 @@
             border: none;
             cursor: pointer;
             user-select: none;
+            margin-bottom: 0;
+            border: 2px solid #ccc;
+            border-radius: 1cm;
+            transition: all 0.3s ease;
+        }
+
+        .feedback button:hover {
+            border: 2px solid cyan;
         }
 
         .send-button {
@@ -557,8 +568,8 @@
             const feedback = document.createElement("div");
             feedback.className = "feedback";
             feedback.innerHTML = `
-            <button onclick="sendFeedback('up')">👍</button>
-            <button onclick="sendFeedback('down')">👎</button>
+            <button onclick="sendFeedback('up')" style="">👍</button>
+            <button onclick="sendFeedback('down')" style="">👎</button>
         `;
             messageElement.appendChild(feedback);
         }
